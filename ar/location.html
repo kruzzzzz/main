@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Cek Lokasi Sekarang</title>
+  </head>
+  <body>
+    <h2>Koordinat Lokasi Saat Ini</h2>
+    <p id="coords">Mengambil lokasi...</p>
+
+    <script>
+      // Fungsi untuk menampilkan lokasi
+      function showPosition(position) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        // Tampilkan di layar
+        document.getElementById("coords").innerText =
+          Latitude: ${lat}\nLongitude: ${lon};
+
+        // Tampilkan juga di terminal browser (Console)
+        console.log("Latitude:", lat);
+        console.log("Longitude:", lon);
+      }
+
+      // Jika gagal ambil lokasi
+      function showError(error) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            alert("Akses lokasi ditolak. Aktifkan izin lokasi di browser.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            alert("Informasi lokasi tidak tersedia.");
+            break;
+          case error.TIMEOUT:
+            alert("Permintaan lokasi terlalu lama.");
+            break;
+          default:
+            alert("Terjadi kesalahan tidak diketahui.");
+        }
+      }
+
+      // Ambil lokasi sekarang
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError, {
+          enableHighAccuracy: true
+        });
+      } else {
+        alert("Browser kamu tidak mendukung fitur Geolocation.");
+      }
+    </script>
+  </body>
+</html>
