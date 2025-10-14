@@ -16,7 +16,7 @@
 
         // Tampilkan di layar
         document.getElementById("coords").innerText =
-          Latitude: ${lat}\nLongitude: ${lon};
+          `Latitude: ${lat}\nLongitude: ${lon}`;
 
         // Tampilkan juga di terminal browser (Console)
         console.log("Latitude:", lat);
@@ -25,28 +25,36 @@
 
       // Jika gagal ambil lokasi
       function showError(error) {
+        let msg = "";
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            alert("Akses lokasi ditolak. Aktifkan izin lokasi di browser.");
+            msg = "Akses lokasi ditolak. Aktifkan izin lokasi di browser.";
             break;
           case error.POSITION_UNAVAILABLE:
-            alert("Informasi lokasi tidak tersedia.");
+            msg = "Informasi lokasi tidak tersedia.";
             break;
           case error.TIMEOUT:
-            alert("Permintaan lokasi terlalu lama.");
+            msg = "Permintaan lokasi terlalu lama.";
             break;
           default:
-            alert("Terjadi kesalahan tidak diketahui.");
+            msg = "Terjadi kesalahan tidak diketahui.";
         }
+        console.error("Geolocation error:", error);
+        document.getElementById("coords").innerText = msg;
+        alert(msg);
       }
 
-      // Ambil lokasi sekarang
-      if (navigator.geolocation) {
+      // Ambil lokasi sekarang (butuh HTTPS atau http://localhost)
+      if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(showPosition, showError, {
-          enableHighAccuracy: true
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
         });
       } else {
-        alert("Browser kamu tidak mendukung fitur Geolocation.");
+        const msg = "Browser kamu tidak mendukung fitur Geolocation.";
+        document.getElementById("coords").innerText = msg;
+        alert(msg);
       }
     </script>
   </body>
