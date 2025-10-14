@@ -23,5 +23,20 @@
 
             <a-camera gps-camera rotation-reader></a-camera>
         </a-scene>
+
+        <script>
+            navigator.geolocation.watchPosition(
+              (pos) => {
+                console.log("Latitude:", pos.coords.latitude);
+                console.log("Longitude:", pos.coords.longitude);
+                alert(Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude});
+              },
+              (err) => {
+                console.error("GPS Error:", err);
+                alert("Tidak bisa akses lokasi. Pastikan izin lokasi diaktifkan!");
+              },
+              { enableHighAccuracy: true }
+            );
+        </script>
     </body>
 </html>
