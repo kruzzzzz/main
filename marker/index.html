@@ -12,36 +12,6 @@
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
-      <a-assets>
-        <a-asset-item id="myObj" crossorigin="anonymous" src="./drum.obj"></a-asset-item>
-      </a-assets>
-
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <a-entity light="type: ambient; intensity: 0.7"></a-entity>
-      <a-entity light="type: directional; intensity: 1.0" position="0 1 1"></a-entity>
-
-      <a-entity id="anchor" mindar-image-target="targetIndex: 0">
-        <a-plane color="#39ff14" width="0.5" height="0.5" position="0 0 0.01"></a-plane>
-        <a-box depth="0.05" height="0.05" width="0.05" position="0 0 0.08" color="#ff00ff"></a-box>
-
-        <a-entity
-          obj-model="obj: #myObj"
-          material="shader: flat; color: #ffffff"
-          position="0 0 0.05"
-          rotation="0 0 0"
-          scale="0.15 0.15 0.15">
-        </a-entity>
-      </a-entity>
-    </a-scene>
-
-    <script>
-      window.addEventListener('load', () => {
-        const anchor = document.querySelector('#anchor');
-        anchor.addEventListener('targetFound', () => console.log('MindAR: target FOUND'));
-        anchor.addEventListener('targetLost', () => console.log('MindAR: target LOST'));
-      });
-    </script>
   </body>
 </html>
 
