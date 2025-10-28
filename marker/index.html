@@ -3,25 +3,146 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body { margin:0; }
+      #ui {
+        position: fixed; left: 8px; bottom: 8px; z-index: 5;
+        background: rgba(0,0,0,.55); color: #fff; padding: 8px; border-radius: 6px;
+        font: 13px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+      #status {
+        position: fixed; left: 8px; top: 8px; z-index: 5;
+        background: rgba(0,0,0,.55); color: #0f0; padding: 6px 8px; border-radius: 6px;
+        font: 12px/1.3 monospace;
+      }
+      #ui input[type=range]{ width: 200px; }
+      a-scene { background: #111; }
+    </style>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind" color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-        <a-assets>
-            <a-asset-item id="myObj" crossorigin="anonymous" src="botol.jpg"></a-asset-item>
-        </a-assets>
+    <div id="status">Init…</div>
+    <div id="ui">
+      <div><strong>Auto scale (lebar marker = 1)</strong></div>
+      <label>
+        Coverage: <span id="covVal">0.80</span>
+        <input id="coverage" type="range" min="0.1" max="1.5" step="0.01" value="0.80">
+      </label>
+      <div style="opacity:.8">Tips: 1.00 = selebar marker, 0.80 = 80% lebar marker</div>
+    </div>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind; showStats: true;"
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-assets>
+        <!-- Jika file sebenarnya masih bernama targets(2).mind, ganti imageTargetSrc jadi ./targets%282%29.mind -->
+        <a-asset-item id="myObj" crossorigin="anonymous" src="./drum.obj"></a-asset-item>
+        <!-- Jika punya .mtl, tambahkan:
+        <a-asset-item id="myMtl" crossorigin="anonymous" src="./drum.mtl"></a-asset-item>
+        -->
+      </a-assets>
 
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-entity obj-model="obj: #myObj"
-                    position="0 0 0.05"
-                    rotation="0 0 0"
-                    scale="0.01 0.01 0.01">
-            </a-entity>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Pencahayaan agar OBJ tidak gelap -->
+      <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+      <a-entity light="type: directional; intensity: 1.0" position="0 1 1"></a-entity>
+
+      <!-- Anchor marker -->
+      <a-entity id="anchor" mindar-image-target="targetIndex: 0">
+
+        <!-- Plane debug selebar marker (width=1). Ubah height jika perlu menyesuaikan rasio marker. -->
+        <a-plane color="#39ff14" opacity="0.25" width="1" height="0.6" position="0 0 0.005"></a-plane>
+
+        <!-- Container untuk scaling/position global -->
+        <a-entity id="modelContainer" position="0 0 0.05" scale="1 1 1">
+          <!-- Model asli di dalam container, akan dipusatkan via JS -->
+          <a-entity
+            id="model"
+            obj-model="obj: #myObj"
+            material="shader: flat; color: #ffffff"
+            rotation="0 0 0"
+            position="0 0 0">
+          </a-entity>
         </a-entity>
+      </a-entity>
     </a-scene>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const containerEl = document.getElementById('modelContainer');
+      const modelEl = document.getElementById('model');
+      const coverageInput = document.getElementById('coverage');
+      const covValEl = document.getElementById('covVal');
+
+      // Restore coverage dari localStorage (opsional)
+      const saved = parseFloat(localStorage.getItem('coverage') || '0.8');
+      coverageInput.value = saved.toFixed(2);
+      covValEl.textContent = parseFloat(coverageInput.value).toFixed(2);
+
+      // Helper: auto-fit lebar model ke proporsi lebar marker
+      function autoFit(coverage = 0.8, fitAxis = 'x') {
+        const obj3d = modelEl.getObject3D('mesh') || modelEl.object3D; // fallback
+        if (!obj3d) return;
+
+        // Hitung bounding box model
+        const box = new THREE.Box3().setFromObject(obj3d);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        // Pusatkan model di origin container
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        obj3d.position.sub(center);
+
+        // Tentukan dimensi acuan untuk fitting
+        let current = size.x;
+        if (fitAxis === 'y') current = size.y;
+        if (fitAxis === 'z') current = size.z;
+        if (fitAxis === 'max') current = Math.max(size.x, size.y, size.z);
+
+        // Marker width = 1; coverage = proporsi yang diinginkan
+        const desired = coverage;
+        const s = desired / Math.max(current, 1e-6);
+
+        // Terapkan skala ke container agar transform tetap rapi
+        containerEl.object3D.scale.set(s, s, s);
+
+        statusEl.textContent = `Scaled: ${s.toFixed(4)} (coverage=${coverage.toFixed(2)}, axis=${fitAxis})`;
+      }
+
+      // Ketika model selesai dimuat → lakukan auto-fit
+      modelEl.addEventListener('model-loaded', () => {
+        // Pastikan mesh tersedia (untuk OBJ, A-Frame memasukkan di object3D/map 'mesh')
+        // Jalankan 2x kecil dengan requestAnimationFrame agar bounding box stabil sesudah material/geometry siap
+        requestAnimationFrame(() => {
+          autoFit(parseFloat(coverageInput.value), 'x'); // 'x' = lebar; bisa ganti 'max' jika mau mengisi sisi terpanjang
+        });
+      });
+
+      // Slider untuk fine-tune coverage
+      coverageInput.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        covValEl.textContent = v.toFixed(2);
+        localStorage.setItem('coverage', v.toString());
+        autoFit(v, 'x');
+      });
+
+      // Event MindAR untuk feedback
+      window.addEventListener('load', () => {
+        const anchor = document.querySelector('#anchor');
+        const sceneEl = document.querySelector('a-scene');
+        sceneEl.addEventListener('arReady', () => statusEl.textContent = 'AR READY — arahkan ke marker');
+        sceneEl.addEventListener('arError', (ev) => {
+          statusEl.textContent = 'AR ERROR — cek izin kamera / console';
+          console.error('arError', ev);
+        });
+        anchor.addEventListener('targetFound', () => statusEl.textContent = 'TARGET FOUND');
+        anchor.addEventListener('targetLost', () => statusEl.textContent = 'TARGET LOST');
+      });
+    </script>
   </body>
 </html>
-
